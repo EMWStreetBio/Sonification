@@ -1,11 +1,11 @@
 # Generated files
-.pyc
+*.pyc
 
 #Wolfram files
-.nb
+*.nb
 
 # OS files
-.DS_Store
+*.DS_Store
 
 #Picasa files
-.ini
+*.ini
