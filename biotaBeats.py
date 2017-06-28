@@ -1,9 +1,6 @@
 import sys
 import numpy as np
 import os
-if os.path.exists("PySynth-1.1/"):
-    sys.path.append('PySynth-1.1')
-    import pysynth as ps
 
 # sys.path.append('/Users/gautam/.virtualenvs/cv/lib/python2.7/site-packages')
 import cv2
@@ -14,7 +11,8 @@ from scipy.spatial.distance import euclidean
 from image_thresholding import *
 
 def img_processing(imgfile, erode=1, dilate=1, inv=True, show=False):
-    ''' STEP-BY-STEP:
+    ''' CURRENTLY NOT IN USE
+        STEP-BY-STEP:
        1) Gaussian filtering;
        2) image grayscale + binarization;
        3) image erosion (OPTIONAL)
@@ -80,27 +78,44 @@ def find_centroids(img, orig, show=False): # finds dark spots only
 
 def analyze_notes(img, centroids, num_sectors=5):
     """ FINAL!!
-        ROW 0: note value
-        ROW 1: radial distance (pixels)
-        ROW 2: angle from top, center (radians)
-        ROW 3: centroid diameter (?)
+        COL 0: note value
+        COL 1: radial distance (pixels)
+        COL 2: angle from top, center (radians)
+        COL 3: centroid diameter (?)
+        COL 4: average sector density (?) [0,1]
+        [later add centroid coordinates]
     """
     center = [(img.shape[0]/2.0), (img.shape[1]/2.0)]
     center_vector = [0.0, -(img.shape[1]/2.0)]
     sector_ang = (2.0*pi) / num_sectors
-    note_info = np.zeros((4, len(centroids))) # hard-coded!
+    note_info = np.zeros((len(centroids), 5)) # hard-coded!
+    area_sums = np.zeros(num_sectors)
     for i in range(len(centroids)):
-        note_info[1, i] = euclidean(centroids[i].pt, center) # fill ROW 1
+        note_info[i,1] = euclidean(centroids[i].pt, center) # fill ROW 1
         # may run into issues with parallel/antiparallel center_vector and pt_vector
         pt_vector = np.subtract(centroids[i].pt, center)
         num = np.dot(center_vector, pt_vector)
         denom = np.linalg.det([center_vector, pt_vector])
         angle = np.math.atan2(denom, num) #in range (-pi, pi]
         if (angle < 0.0): angle += (2.0*pi)
-        note_info[2, i] = angle # fill ROW 2
-        note_info[3, i] = centroids[i].size # fill ROW 3
-        note_info[0, i] = (int(floor(angle / sector_ang))) # fill ROW 0
+        note_info[i,2] = angle # fill ROW 2
+        note_info[i,3] = centroids[i].size # fill ROW 3
+        note_info[i,0] = (int(floor(angle / sector_ang))) # fill ROW 0
+        area_sums[note_info[i,0]] += pi * ((note_info[i,3] / 2.0) ** 2)
+    area_sums = area_sums / (0.5*sector_ang*(((img.shape[0]+img.shape[1])/2.0)**2))
+    for i in range(len(centroids)):
+        note_info[i,4] = area_sums[note_info[i,0]]
     return note_info
+
+def save_csv(filename, note_info):
+    with open(filename, 'wb') as csvfile:
+        fwriter = csv.writer(csvfile)
+        header = ["NOTE #", "SECTOR", "RAD DIST", "ANGLE (RAD)" , "DIAMETER", "SECTOR DENSITY"]
+        fwriter.writerow(header)
+        for i in range(len(note_info)):
+            row = np.insert(note_info[i], 0, i+1)
+            fwriter.writerow(row)
+    csvfile.close()
 
 def generate_music(img, note_info, algorithm, musicfile,
     octave_span=3, tot_time=60):
@@ -130,16 +145,16 @@ def generate_music(img, note_info, algorithm, musicfile,
     time = 0    # start at the beginning
 
     if (algorithm == 'concentric'): # where max = total_time
-        sort_by = note_info[1, :] # radial distance
+        sort_by = note_info[:,1] # radial distance
         max_time = (img.shape[0]+img.shape[1]) / 4.0 # max, radius (average)
     elif (algorithm == 'radial'): # normalization, where mean = 0; max - min = octave_span
-        sort_by = note_info[2, :] # angle
+        sort_by = note_info[:,2] # angle
         max_time = 2.0 * pi # aka 360 degrees
     else:
         print "ERROR: Invalid 'algorithm' mode"
         return None
 
-    if (octave_span != 0): octave_factor = (np.amax(note_info[3, :])-np.amin(note_info[3, :])) / octave_span
+    if (octave_span != 0): octave_factor = (np.amax(note_info[:,3])-np.amin(note_info[:,3])) / octave_span
     time_factor = tot_time / max_time
     mf.addTrackName(track, time, "Biota Beats Sample")
     mf.addTempo(track, time, 60) # tempo/bpm (param3) to be parametrized
@@ -151,11 +166,11 @@ def generate_music(img, note_info, algorithm, musicfile,
 
     # Generate notes
     print "Note\tPitch\trelOct\tStart(Beats)\tTrack"
-    for i in range(note_info.shape[1]):
+    for i in range(note_info.shape[0]):
         if (octave_span != 0):
-            octave = int(floor((note_info[3, i]-np.amin(note_info[3, :])) / octave_factor)) - (octave_span / 2)
+            octave = int(floor((note_info[i,3]-np.amin(note_info[:,3])) / octave_factor)) - (octave_span / 2)
         else: octave = 0
-        pitch = note_conversion[note_info[0, i]] + (12 * octave) # 12 half-notes per octave
+        pitch = note_conversion[note_info[i,0]] + (12 * octave) # 12 half-notes per octave
         time = sort_by[i] * time_factor
         '''BUG TODO: parameterize tempo to use total time.
         e.g. if we use 'angle' algorithm mode,
@@ -163,85 +178,9 @@ def generate_music(img, note_info, algorithm, musicfile,
         then final note is ALWAYS played at 60th beat'''
         duration = 5 # to be parameterized
         volume = 100 # to  be parameterized
-        track = int(note_info[0,i])
+        track = int(note_info[i,0])
         print i,"\t",pitch,"\t",octave,"\t",time,"\t",track
         mf.addNote(track, channel, pitch, time, duration, volume)
-
-    # write it to disk
-    with open(musicfile, 'wb') as outf:
-        mf.writeFile(outf)
-
-def rad_dist(img, centroids):
-    """ TO BE DEPRECATED """
-    center = [(img.shape[0]/2.0), (img.shape[1]/2.0)]
-    rad_dist = np.zeros(len(centroids))
-    for i in range(len(centroids)):
-        rad_dist[i] = euclidean(centroids[i].pt, center)
-    notes = zip(rad_dist, centroids)
-    notes.sort()
-    return notes
-
-def sectorize(img, notes, num_sectors):
-    """ TO BE DEPRECATED """
-    sector_ang = (2.0*pi) / num_sectors
-    center = [(img.shape[0]/2.0), (img.shape[1]/2.0)]
-    center_vector = [0.0, -(img.shape[1]/2.0)]
-    note_vals = []
-    for i in range(len(notes)):
-        pt_vector = np.subtract(notes[i][1].pt, center)
-        # may run into issues with parallel/antiparallel center_vector and pt_vector
-        num = np.dot(center_vector, pt_vector)
-        denom = np.linalg.det([center_vector, pt_vector])
-        angle = np.math.atan2(denom, num)
-        if (angle < 0.0): angle += (2.0*pi)
-        note_vals.append(int(floor(angle / sector_ang)))
-    return zip(notes, note_vals) # FIX: currently zips ((a,b)c)
-
-def write_wav(note_vals, total_dist, musicfile): # add total_time?
-    """ TO BE DEPRECATED """
-    # most basic, plays all notes w/o regard for rests or relative timing
-    # hard-coded for pentatonic scale:
-    note_conversion = {0:'c', 1:'d', 2:'e', 3:'g', 4:'a'}
-    rests = np.zeros(len(note_vals)) # may be unnecessary
-    rests[0] = note_vals[0][0][0]
-    for i in range(1,len(note_vals)):
-        rests[i] = note_vals[i][0][0] - note_vals[i-1][0][0]
-    # simply plays all notes as quarter notes (no rests)
-    # PySynth cannot play multiple notes at the same time, which would be preferable
-    notes = []
-    for i in note_vals:
-        notes.append((note_conversion[i[1]], 4))
-    notes = tuple(notes)
-    ps.make_wav(notes, fn = musicfile)
-
-def write_midi(note_vals, total_dist, total_time, musicfile):
-    """ TO BE DEPRECATED """
-    # create your MIDI object
-    mf = MIDIFile(1, adjust_origin=True) # only 1 track, changed adjust_origin to T
-    track = 0   # the only track
-
-    time = 0    # start at the beginning
-    time_factor = total_time / total_dist
-    mf.addTrackName(track, time, "Sample Track")
-    mf.addTempo(track, time, (1/time_factor))
-
-    channel = 0
-    note_conversion = {0:60, 1:62, 2:64, 3:67, 4:69}
-
-    for i in note_vals: # add some notes
-        pitch = note_conversion[i[1]]
-        time = i[0][0] * time_factor
-        duration = 4 # can be parameterized
-        volume = 100 # can be parameterized
-        mf.addNote(track, channel, pitch, time, duration, volume)
-
-    ''' http://stackoverflow.com/questions/11059801/how-can-i-write-a-midi-file-with-python
-    how to write a note (each pitch # is a piano key)
-    pitch = 60           # C4 (middle C)
-    time = 0             # start on beat 0
-    duration = 1         # 1 beat long
-    mf.addNote(track, channel, pitch, time, duration, volume)
-    '''
 
     # write it to disk
     with open(musicfile, 'wb') as outf:
