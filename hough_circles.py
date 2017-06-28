@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import pysynth as ps
 from scipy.spatial.distance import euclidean
+from matplotlib import pyplot as plt
 
 # images = read image
 # image = cv2.imread("jurassic_world.jpg")
@@ -14,19 +15,30 @@ cv2.imshow("Original", image)
 # binarized = binarize
 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 cv2.imshow("GrayScale", gray)
+'''
+edges = cv2.Canny(gray,100,200,30)
 
+plt.subplot(121),plt.imshow(image,cmap = 'gray')
+plt.title('Original Image'), plt.xticks([]), plt.yticks([])
+plt.subplot(122),plt.imshow(edges,cmap = 'gray')
+plt.title('Edge Image'), plt.xticks([]), plt.yticks([])
+
+plt.show()
+'''
 # PARAMETERS
-dp=1.2
-param1=50
+dp=0.5
+param1=200
 param2=30
 minRadius=50
-maxRadius=100
+maxRadius=100 #max diam = 200 pi
 
 circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, dp, minRadius*2, param1=param1, param2=param2,
 minRadius=minRadius, maxRadius=maxRadius)
 
 # ensure at least some circles were found
 if circles is not None:
+    print "Labels: dp, minDist, param1, param2, minRadius, maxRadius"
+    print "Parameters:", dp, minRadius*2, param1, param2, minRadius, maxRadius
     print "Number of circles found:", circles.shape[1]
     # convert the (x, y) coordinates and radius of the circles to integers
     circles = np.round(circles[0, :]).astype("int")
