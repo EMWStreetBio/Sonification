@@ -4,38 +4,34 @@ import pysynth as ps
 from scipy.spatial.distance import euclidean
 from matplotlib import pyplot as plt
 
-# images = read image
-# image = cv2.imread("jurassic_world.jpg")
-# image = cv2.imread("output_0027.png")
 image = cv2.imread("images/dj_jeff_resize.png")
-output = image.copy()
 # image = cv2.imread("BlobTest.jpg")
-cv2.imshow("Original", image)
+#cv2.imshow("Original", image)
 
-# binarized = binarize
 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-cv2.imshow("GrayScale", gray)
+#cv2.imshow("GrayScale", gray)
 
 kernel = cv2.getGaussianKernel(9, 3)
 gfImage = cv2.GaussianBlur(gray,(7, 7), 0)
-cv2.imshow("Gaussian", gfImage)
+#cv2.imshow("Gaussian", gfImage)
 
 # PARAMETERS
 dp=0.5
 param1=200
 param2=30
-minRadius=50
-maxRadius=100 #max diam = 100 pi
+minRadius=30
+maxRadius=50 #max diam = ~100 px
 
 edges = cv2.Canny(gray, 100, param1, param2)
-'''
+edges3 = cv2.cvtColor(edges,cv2.COLOR_GRAY2RGB)
+output = edges3.copy()
+
 plt.subplot(121),plt.imshow(image,cmap = 'gray')
 plt.title('Original Image'), plt.xticks([]), plt.yticks([])
 plt.subplot(122),plt.imshow(edges,cmap = 'gray')
 plt.title('Edge Image'), plt.xticks([]), plt.yticks([])
 
 plt.show()
-'''
 
 circles = cv2.HoughCircles(gfImage, cv2.HOUGH_GRADIENT, dp, minRadius*2, param1=param1, param2=param2,
 minRadius=minRadius, maxRadius=maxRadius)
@@ -53,7 +49,7 @@ if circles is not None:
     for (h, k, r) in circles:
         # draw the circle in the output image, then draw a rectangle
         # corresponding to the center of the circle
-        cv2.circle(output, (h, k), r, (0, 255, 0), 4)
+        cv2.circle(output, (h, k), r, (0, 255, 0), 1)
         cv2.rectangle(output, (h - 5, k - 5), (h + 5, k + 5), (0, 128, 255), -1)
 
         white_sum = 0.0 #running total
@@ -69,9 +65,8 @@ if circles is not None:
                 if edges[x+h,y+k] == 255: white_sum += 1.0
         print white_sum / ((4*r)+2)
         index += 1
-
-	# show the output image
-    cv2.imshow("output", np.hstack([image, output]))
+    # show the output image
+    cv2.imshow("output", np.hstack([edges3, output]))
     cv2.waitKey(0)
 
 '''
@@ -180,4 +175,4 @@ staff.sort()
 
 for i in range(len(staff)):
     print staff[i][0], staff[i][1].pt
-    '''
+'''
