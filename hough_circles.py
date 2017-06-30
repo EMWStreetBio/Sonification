@@ -3,6 +3,7 @@ import numpy as np
 import pysynth as ps
 from scipy.spatial.distance import euclidean
 from matplotlib import pyplot as plt
+from math import sin, cos
 
 image = cv2.imread("images/dj_jeff_resize.png")
 # image = cv2.imread("BlobTest.jpg")
@@ -52,8 +53,15 @@ if circles is not None:
         cv2.circle(output, (h, k), r, (0, 255, 0), 1)
         cv2.rectangle(output, (h - 5, k - 5), (h + 5, k + 5), (0, 128, 255), -1)
 
-        white_sum = 0.0 #running total
         print "circle", index, "of", (h,k,r)
+        white_sum = 0.0 #running total
+        for theta in range(360):
+            x = int(h + r * cos(theta))
+            y = int(k + r * sin(theta))
+            if edges[x, y] == 255: white_sum += 1.0
+        print white_sum / 360
+
+        ''' USING x^2 + y^2 = r^2
         for i in range((2*r)+1): # for entire span of circle, diameter
             x = i - r
             y = int(((r**2) - (x**2)) ** 0.5)
@@ -64,6 +72,7 @@ if circles is not None:
                 #print "at", x+h, ",", (-y)+k, "px value of", edges[x+h,(-y)+k]
                 if edges[x+h,y+k] == 255: white_sum += 1.0
         print white_sum / ((4*r)+2)
+        '''
         index += 1
     # show the output image
     cv2.imshow("output", np.hstack([edges3, output]))
