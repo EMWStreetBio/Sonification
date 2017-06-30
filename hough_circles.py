@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 # images = read image
 # image = cv2.imread("jurassic_world.jpg")
 # image = cv2.imread("output_0027.png")
-image = cv2.imread("images/dj_final_resize.png")
+image = cv2.imread("images/dj_jeff_resize.png")
 output = image.copy()
 # image = cv2.imread("BlobTest.jpg")
 cv2.imshow("Original", image)
@@ -15,9 +15,20 @@ cv2.imshow("Original", image)
 # binarized = binarize
 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 cv2.imshow("GrayScale", gray)
-'''
-edges = cv2.Canny(gray,100,200,30)
 
+kernel = cv2.getGaussianKernel(9, 3)
+gfImage = cv2.GaussianBlur(gray,(7, 7), 0)
+cv2.imshow("Gaussian", gfImage)
+
+# PARAMETERS
+dp=0.5
+param1=200
+param2=30
+minRadius=50
+maxRadius=100 #max diam = 100 pi
+
+edges = cv2.Canny(gray, 100, param1, param2)
+'''
 plt.subplot(121),plt.imshow(image,cmap = 'gray')
 plt.title('Original Image'), plt.xticks([]), plt.yticks([])
 plt.subplot(122),plt.imshow(edges,cmap = 'gray')
@@ -25,14 +36,8 @@ plt.title('Edge Image'), plt.xticks([]), plt.yticks([])
 
 plt.show()
 '''
-# PARAMETERS
-dp=0.5
-param1=200
-param2=30
-minRadius=50
-maxRadius=100 #max diam = 200 pi
 
-circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, dp, minRadius*2, param1=param1, param2=param2,
+circles = cv2.HoughCircles(gfImage, cv2.HOUGH_GRADIENT, dp, minRadius*2, param1=param1, param2=param2,
 minRadius=minRadius, maxRadius=maxRadius)
 
 # ensure at least some circles were found
@@ -43,12 +48,27 @@ if circles is not None:
     # convert the (x, y) coordinates and radius of the circles to integers
     circles = np.round(circles[0, :]).astype("int")
 
-	# loop over the (x, y) coordinates and radius of the circles
-    for (x, y, r) in circles:
-		# draw the circle in the output image, then draw a rectangle
-		# corresponding to the center of the circle
-		cv2.circle(output, (x, y), r, (0, 255, 0), 4)
-		cv2.rectangle(output, (x - 5, y - 5), (x + 5, y + 5), (0, 128, 255), -1)
+    index = 0
+    # loop over the (h, k) center coordinates and radius of the circles
+    for (h, k, r) in circles:
+        # draw the circle in the output image, then draw a rectangle
+        # corresponding to the center of the circle
+        cv2.circle(output, (h, k), r, (0, 255, 0), 4)
+        cv2.rectangle(output, (h - 5, k - 5), (h + 5, k + 5), (0, 128, 255), -1)
+
+        white_sum = 0.0 #running total
+        print "circle", index, "of", (h,k,r)
+        for i in range((2*r)+1): # for entire span of circle, diameter
+            x = i - r
+            y = int(((r**2) - (x**2)) ** 0.5)
+            #print "at", x+h, ",", y+k, "px value of", edges[x+h,y+k]
+            if edges[x+h,y+k] == 255:
+                white_sum += 1.0
+            if y != 0:
+                #print "at", x+h, ",", (-y)+k, "px value of", edges[x+h,(-y)+k]
+                if edges[x+h,y+k] == 255: white_sum += 1.0
+        print white_sum / ((4*r)+2)
+        index += 1
 
 	# show the output image
     cv2.imshow("output", np.hstack([image, output]))
