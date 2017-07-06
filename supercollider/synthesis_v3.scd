@@ -15,7 +15,7 @@ toyinput = [0.0174,0.0190,0.0290,0.0088,0.0083];
 ~dens = [0.0160, 0.0143, 0.00877];
 ~diam = Array.new;
 ~diam = ~diam.add(Pseq([
-	Pshuf([53.5, 25.5, 21.5, 65, 24.5, 63], 1)],
+	Pshuf([53.5, 25.5, 21.5, 65, 24.5, 63], 1)], //253
 inf));
 ~diam = ~diam.add(Pseq([
 	Pshuf([36.5, 32, 28.5, 91], 1)],
@@ -58,7 +58,7 @@ SynthDef(\bfgrain, {
 
 ( // collect Pbinds into Array
 ~pbinds = Array.new;
-~funk.size.do{ | i |
+3.do{ | i |
 	~pbinds = ~pbinds.add(
 		Pbind(
 			\instrument, 'bfgrain',
@@ -66,16 +66,15 @@ SynthDef(\bfgrain, {
 			\gdur, ~dens[i] * 100,
 			\buf, ~funk[i].bufnum,
 			\spos, Pseg(Pseq([0, ~funk[i].numFrames],inf), Pseq([~funk[i].duration,0],inf), \lin),
-			\dens, ~dens[i] * 100,
-			\rate, ~diam[i] / 1000)
+			\dens, ~dens[i] * 10000,
+			\rate, ~diam[i] / 10,
+		)
 )};
 )
 
 ~pbinds[0].play;
 ~pbinds[1].play;
 ~pbinds[2].play;
-~pbinds[3].play;
-~pbinds[4].play;
 
 ( // play Pbinds in parallel
 TempoClock.default.tempo = 1;
