@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 import os
+import csv
 
 # sys.path.append('/Users/gautam/.virtualenvs/cv/lib/python2.7/site-packages')
 import cv2
@@ -107,6 +108,41 @@ def analyze_notes(img, centroids, num_sectors=5):
         note_info[i,4] = area_sums[note_info[i,0]]
     return note_info
 
+def analyze_csv(img, csvfile, num_sectors=5):
+    """ FINAL!!
+        COL 0: note value
+        COL 1: radial distance (pixels)
+        COL 2: angle from top, center (radians)
+        COL 3: centroid diameter (?)
+        COL 4: average sector density (?) [0,1]
+        [later add centroid coordinates]
+    """
+    center = [(img.shape[0]/2.0), (img.shape[1]/2.0)]
+    center_vector = [0.0, -(img.shape[1]/2.0)]
+    sector_ang = (2.0*pi) / num_sectors
+    centroids = np.loadtxt(csvfile, delimiter=',')
+    # num rows = num centroids; col 0 = x, col 1 = y, col 2 = radius
+
+    note_info = np.zeros((centroids.shape[0], 5)) # hard-coded! see comments
+    area_sums = np.zeros(num_sectors)
+    for i in range(len(centroids)):
+        cen_coord = (float(centroids[i,0]), float(centroids[i,1]))
+        note_info[i,1] = euclidean(cen_coord, center) # fill ROW 1
+        # may run into issues with parallel/antiparallel center_vector and pt_vector
+        pt_vector = np.subtract(cen_coord, center)
+        num = np.dot(center_vector, pt_vector)
+        denom = np.linalg.det([center_vector, pt_vector])
+        angle = np.math.atan2(denom, num) #in range (-pi, pi]
+        if (angle < 0.0): angle += (2.0*pi)
+        note_info[i,2] = angle # fill ROW 2
+        note_info[i,3] = centroids[i, 2] * 2.0 # fill ROW 3
+        note_info[i,0] = (int(floor(angle / sector_ang))) # fill ROW 0
+        area_sums[note_info[i,0]] += pi * ((note_info[i,3] / 2.0) ** 2)
+    area_sums = area_sums / (0.5*sector_ang*(((img.shape[0]+img.shape[1])/2.0)**2))
+    for i in range(len(centroids)):
+        note_info[i,4] = area_sums[note_info[i,0]]
+    return note_info
+
 def save_csv(filename, note_info):
     with open(filename, 'wb') as csvfile:
         fwriter = csv.writer(csvfile)
@@ -190,9 +226,9 @@ def main():
     # final, orig = img_processing("images/output_0027.png", show=False)
     #final, orig = img_processing("images/BlobTest.jpeg", inv=False, show=True)
     # final, orig = img_processing("images/yixiao.png", dilate=0, inv=False)
-    final, orig = img_processing("images/yixiao_contrasted.jpg", dilate=0, inv=False)
+    final, orig = img_processing("images/dj_jeff_resize.png", dilate=0, inv=False)
     # centroids = find_centroids(final, orig, show=False)
-    centroids = adaptiveThresholding(orig, show=True)
+    # centroids = adaptiveThresholding(orig, show=True)
     #note_dist = rad_dist(final, centroids)
     #note_vals = sectorize(final, note_dist, 5)
     #radius = (final.shape[0]+final.shape[1])/4.0 # image currently not a perfect square
@@ -200,11 +236,16 @@ def main():
     #    print note_vals[i][0][0], note_vals[i][0][1], note_vals[i][1]
     #write_wav(note_vals, radius, "yixiao.wav")
     #write_midi(note_vals, radius, 60, "yixiao.mid")
+    """
     note_info = analyze_notes(final, centroids, 5)
     generate_music(final, note_info, 'concentric', "output/yixiao_conc.mid", 3, 30)
     generate_music(final, note_info, 'concentric', "output/yixiao_conc_no8.mid", 0, 30)
     generate_music(final, note_info, 'radial', "output/yixiao_rad.mid", 3, 10) # doesn't make sense with sector notes
     generate_music(final, note_info, 'radial', "output/yixiao_rad_no8.mid", 0, 10) # doesn't make sense with sector notes
+    """
+    centroids = analyze_csv(orig, "dj_jeff_inp.csv")
+    save_csv("output/dj_jeff_out.csv", centroids)
+    generate_music(orig, centroids, 'concentric', "output/dj_jeff_conc.mid", 3, 30)
 
 if __name__=='__main__':
     # add arguments for image_location for testing... currently in main()
