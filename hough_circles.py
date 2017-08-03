@@ -1,11 +1,11 @@
 import cv2
 import numpy as np
-import pysynth as ps
 from scipy.spatial.distance import euclidean
 from matplotlib import pyplot as plt
 from math import sin, cos
 
-image = cv2.imread("images/dj_jeff_resize.png")
+# image = cv2.imread("images/dj_jeff_resize.png")
+image = cv2.imread("images/SaraSp.png")
 # image = cv2.imread("BlobTest.jpg")
 #cv2.imshow("Original", image)
 
@@ -13,14 +13,15 @@ gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 #cv2.imshow("GrayScale", gray)
 
 kernel = cv2.getGaussianKernel(9, 3)
-gfImage = cv2.GaussianBlur(gray,(7, 7), 0)
+blurRadius = 11
+gfImage = cv2.GaussianBlur(gray,(blurRadius, blurRadius), 0)
 #cv2.imshow("Gaussian", gfImage)
 
 # PARAMETERS
-dp=0.5
-param1=200
-param2=30
-minRadius=30
+dp=1.2
+param1=200 # ...?
+param2=30 # ...?
+minRadius=10
 maxRadius=50 #max diam = ~100 px
 
 edges = cv2.Canny(gray, 100, param1, param2)
@@ -75,7 +76,10 @@ if circles is not None:
         '''
         index += 1
     # show the output image
-    cv2.imshow("output", np.hstack([edges3, output]))
+    # cv2.namedWindow('output', cv2.WINDOW_NORMAL)
+    # cv2.resizeWindow('output', 1000,600)
+    cv2.imshow('output', np.hstack([edges3, output]))
+    cv2.imwrite('output/houghOutput.png', np.hstack([edges3, output]))
     cv2.waitKey(0)
 
 '''
