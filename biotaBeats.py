@@ -8,7 +8,6 @@ import cv2
 from midiutil.MidiFile import MIDIFile
 from math import pi, floor
 from scipy.spatial.distance import euclidean
-from image_thresholding import *
 
 def img_processing(imgfile, erode=1, dilate=1, inv=True, show=False):
     ''' STEP-BY-STEP:
@@ -52,15 +51,15 @@ def find_centroids(img, orig, show=False): # finds dark spots only
     params.maxThreshold = 255
     # Filter by Area.
     params.filterByArea = True
-    params.minArea = 150
+    params.minArea = 50
     # Filter by Circularity
-    params.filterByCircularity = True
-    params.minCircularity = 0.8
+    params.filterByCircularity = False
+    params.minCircularity = 0.6
     # Filter by Convexity
-    params.filterByConvexity = True
-    params.minConvexity = 0.87
+    params.filterByConvexity = False
+    params.minConvexity = 0.6
     # Filter by Inertia
-    params.filterByInertia = True
+    params.filterByInertia = False
     params.minInertiaRatio = 0.5
 
     # Create a detector with the parameters
@@ -190,8 +189,10 @@ def main():
     # final, orig = img_processing("images/output_0027.png", show=False)
     #final, orig = img_processing("images/BlobTest.jpeg", inv=False, show=True)
     # final, orig = img_processing("images/yixiao.png", dilate=0, inv=False)
-    final, orig = img_processing("images/yixiao_contrasted.jpg", dilate=0, inv=False)
+    #final, orig = img_processing("images/yixiao_contrasted.jpg", dilate=0, inv=False, show=True)
+    final, orig = img_processing("rawphotos/IMG_1976.JPG", dilate=0, inv=False, show=True)
     # centroids = find_centroids(final, orig, show=False)
+    """
     centroids = adaptiveThresholding(orig, show=True)
     #note_dist = rad_dist(final, centroids)
     #note_vals = sectorize(final, note_dist, 5)
@@ -205,6 +206,7 @@ def main():
     generate_music(final, note_info, 'concentric', "output/yixiao_conc_no8.mid", 0, 30)
     generate_music(final, note_info, 'radial', "output/yixiao_rad.mid", 3, 10) # doesn't make sense with sector notes
     generate_music(final, note_info, 'radial', "output/yixiao_rad_no8.mid", 0, 10) # doesn't make sense with sector notes
+    """
 
 if __name__=='__main__':
     # add arguments for image_location for testing... currently in main()
