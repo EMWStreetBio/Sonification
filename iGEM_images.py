@@ -53,16 +53,20 @@ def find_centroids(img, orig, save=""): # finds dark spots only
     params.maxThreshold = 255
     # Filter by Area.
     params.filterByArea = True
-    params.minArea = 150
+    params.minArea = 20
+    params.maxArea = 500000
     # Filter by Circularity
     params.filterByCircularity = True
-    params.minCircularity = 0.8
+    params.minCircularity = 0.4
+    params.maxCircularity = 1
     # Filter by Convexity
     params.filterByConvexity = True
-    params.minConvexity = 0.87
+    params.minConvexity = 0.4
+    params.maxConvexity = 1
     # Filter by Inertia
     params.filterByInertia = True
     params.minInertiaRatio = 0.5
+    params.maxInertiaRatio = 1
 
     # Create a detector with the parameters
     detector = cv2.SimpleBlobDetector_create(params)
@@ -77,13 +81,14 @@ def find_centroids(img, orig, save=""): # finds dark spots only
 
 def main(flag, arg1, arg2, arg3, arg4, arg5):
     if flag == "-d": # directory of all images to be processed
-        for image in os.listdir(input):
+        for image in os.listdir(arg1):
             if not image.startswith('.'):
-                img, orig = img_processing(input+image, 83, 255, erode=0, dilate=0, blur=False)
-                keypoints = find_centroids(img, orig, save="keypoints/"+image[:-4]+"_"+str(83)+"_"+str(255)+image[-4:])
-                cv2.imwrite(dest+image[:-4]+"_"+str(83)+"_"+str(255)+image[-4:], img) # hard-coded
+                img, orig = img_processing(arg1+image, int(arg3), int(arg4), erode=0, dilate=0, blur=False)
+                keypoints = find_centroids(img, orig, save="keypoints/"+image[:-4]+"_"+arg3+"_"+arg4+image[-4:])
+                cv2.imwrite(arg2+image[:-4]+"_"+arg3+"_"+arg4+image[-4:], img) # hard-coded
     elif flag == "-f": # .txt file listing paths of all images to be processed
-        with open(input) as fileList:
+        # NOT IMPLEMENTED YET
+        with open(arg1) as fileList:
             for file in fileList:
                 print(file)
     elif flag == "-c": # .csv file listing paths of all images to be processed and their thresholding values
@@ -109,14 +114,19 @@ def main(flag, arg1, arg2, arg3, arg4, arg5):
                 writer.writerow([image, teamdata[image][0], teamdata[image][1]])
         output.close()
     elif flag == '-file':
-        img, orig = img_processing(input, 100, 105, erode=0, dilate=0, show=True)
+        img, orig = img_processing(arg1, int(arg2), int(arg3), erode=0, dilate=0)
+        keyimg, orig = img_processing(arg1, int(arg2), int(arg3), erode=0, dilate=0, blur=True)
+        cv2.imwrite("thresh_noblur_"+arg2+"_"+arg3+".jpg", img)
+        cv2.imwrite("thresh_blur_"+arg2+"_"+arg3+".jpg", keyimg)
+        keypoints = find_centroids(keyimg, orig, save="output_"+arg2+"_"+arg3+".jpg")
     else:
         System.out.println("ERROR: attempted invalid flag\n")
 
 if __name__=='__main__':
     # later use argumentParser
     if len(sys.argv)<=3:
-        print "USAGE: python iGEM.py -d directory_containing_images/ dest_directory/"
+        print "USAGE: python iGEM.py -d directory_containing_images/ dest_directory/ lowthresh uppthresh"
         print "OR: python iGEM.py -c image_filepaths.csv inp_directory/ dest_directory/ lowthresh uppthresh"
+        print "OR: python iGEM.py -file image.jpg lowthresh uppthresh"
     else:
         main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6])
